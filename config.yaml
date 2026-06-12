@@ -1,0 +1,7 @@
+logLevel: debug
+reloadDelay: 500ms
+build:
+  - ["make", "-f", "./test/Makefile", "build"]
+services:
+  - command: ["./bin/svc1"]
+  - command: ["./bin/svc2"]
