@@ -5,13 +5,14 @@ import (
 	"log/slog"
 
 	"github.com/st3iny/nitrogen/internal/config"
+	"github.com/st3iny/nitrogen/internal/event"
 )
 
 type Worker struct {
 	runner Runner
 }
 
-func NewWorker(services []config.Service) *Worker {
+func NewWorker(services []config.ServiceConfig) *Worker {
 	return &Worker{
 		runner: Runner{
 			Services: services,
@@ -19,7 +20,7 @@ func NewWorker(services []config.Service) *Worker {
 	}
 }
 
-func (r *Worker) Run(restartChan <-chan struct{}) {
+func (r *Worker) Run(restartChan <-chan event.Event) {
 	// Wait for initial event restart event from builder
 	<-restartChan
 
@@ -28,7 +29,6 @@ func (r *Worker) Run(restartChan <-chan struct{}) {
 		go func() {
 			<-restartChan
 			cancel()
-			slog.Info("received reload event -> restarting services")
 		}()
 
 		err := r.runner.RunServices(ctx)

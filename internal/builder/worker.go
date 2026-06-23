@@ -3,6 +3,8 @@ package builder
 import (
 	"fmt"
 	"log/slog"
+
+	"github.com/st3iny/nitrogen/internal/event"
 )
 
 type Worker struct {
@@ -15,9 +17,9 @@ func NewWorker(steps [][]string) *Worker {
 	}
 }
 
-func (w *Worker) Run(rebuildChan <-chan struct{}, restartChan chan<- struct{}) {
+func (w *Worker) Run(rebuildChan <-chan event.Event, restartChan chan<- event.Event) {
 	for {
-		<-rebuildChan
+		e := <-rebuildChan
 
 		err := Build(w.steps)
 		if err != nil {
@@ -25,6 +27,6 @@ func (w *Worker) Run(rebuildChan <-chan struct{}, restartChan chan<- struct{}) {
 			continue
 		}
 
-		restartChan <- struct{}{}
+		restartChan <- e
 	}
 }

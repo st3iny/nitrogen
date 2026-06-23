@@ -13,7 +13,7 @@ import (
 )
 
 type Runner struct {
-	Services []config.Service
+	Services []config.ServiceConfig
 }
 
 func (r *Runner) RunServices(ctx context.Context) error {
@@ -34,7 +34,7 @@ func (r *Runner) RunServices(ctx context.Context) error {
 	return nil
 }
 
-func (r *Runner) runService(ctx context.Context, svc *config.Service) error {
+func (r *Runner) runService(ctx context.Context, svc *config.ServiceConfig) error {
 	for ctx.Err() == nil {
 		cmd := exec.CommandContext(ctx, svc.Command[0], svc.Command[1:]...)
 		cmd.Stdout = os.Stdout

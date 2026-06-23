@@ -9,6 +9,7 @@ import (
 	"path"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/gobwas/glob"
 )
 
 var ErrClosed = errors.New("watcher closed")
@@ -16,6 +17,7 @@ var ErrClosed = errors.New("watcher closed")
 type Watcher struct {
 	inner       *fsnotify.Watcher
 	eventFilter []fsnotify.Op
+	excludes    []glob.Glob
 }
 
 func New() (*Watcher, error) {
@@ -46,6 +48,12 @@ func (w *Watcher) AddDirRecursive(dir string) error {
 
 	for _, entry := range entries {
 		fullPath := path.Join(dir, entry.Name())
+
+		if w.isExcluded(entry.Name()) {
+			slog.Info(fmt.Sprintf("ignoring %s", fullPath))
+			continue
+		}
+
 		err = w.Add(fullPath)
 		if err != nil {
 			return err
@@ -59,6 +67,16 @@ func (w *Watcher) AddDirRecursive(dir string) error {
 		}
 	}
 
+	return nil
+}
+
+func (w *Watcher) AddExcludeGlob(pattern string) error {
+	exclude, err := glob.Compile(pattern, '/')
+	if err != nil {
+		return err
+	}
+
+	w.excludes = append(w.excludes, exclude)
 	return nil
 }
 
@@ -88,6 +106,16 @@ func (w *Watcher) Watch(ctx context.Context, events chan<- fsnotify.Event) error
 			slog.Error(err.Error())
 		}
 	}
+}
+
+func (w *Watcher) isExcluded(p string) bool {
+	for _, exclude := range w.excludes {
+		if exclude.Match(path.Base(p)) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func hasOp(event fsnotify.Event, ops []fsnotify.Op) bool {

@@ -8,6 +8,8 @@ import (
 )
 
 func Build(steps [][]string) error {
+	slog.Info(fmt.Sprintf("running %d build steps", len(steps)))
+
 	for i, step := range steps {
 		slog.Info(fmt.Sprintf("running build step %d", i))
 
