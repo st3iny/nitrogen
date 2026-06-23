@@ -21,7 +21,7 @@ func NewWorker(services []config.ServiceConfig) *Worker {
 }
 
 func (r *Worker) Run(restartChan <-chan event.Event) {
-	// Wait for initial event restart event from builder
+	// Delay initial start until receiving a restart event from the builder
 	<-restartChan
 
 	for {
