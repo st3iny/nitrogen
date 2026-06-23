@@ -41,7 +41,7 @@ func Run() error {
 	restartChan := make(chan event.Event, 1)
 
 	go event.MapFSNotifyEvents(watcherChannel, reloadChannel)
-	go debounce.Debounce(reloadChannel, debouncedReloadChannel, cfg.ReloadDelay)
+	go debounce.Debounce(reloadChannel, debouncedReloadChannel, cfg.DebounceDelay)
 
 	go event.TapLogChanges(debouncedReloadChannel, rebuildChan)
 

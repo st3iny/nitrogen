@@ -1,5 +1,5 @@
 #logLevel: debug
-reloadDelay: 500ms
+debounceDelay: 500ms
 build:
   - ["make", "-f", "./test/Makefile", "build"]
 services:

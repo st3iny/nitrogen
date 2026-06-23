@@ -9,11 +9,11 @@ import (
 )
 
 type Config struct {
-	LogLevel    slog.Level      `yaml:"logLevel"`
-	ReloadDelay time.Duration   `yaml:"reloadDelay"`
-	Build       [][]string      `yaml:"build"`
-	Services    []ServiceConfig `yaml:"services"`
-	Watch       WatchConfig     `yaml:"watch"`
+	LogLevel      slog.Level      `yaml:"logLevel"`
+	DebounceDelay time.Duration   `yaml:"debounceDelay"`
+	Build         [][]string      `yaml:"build"`
+	Services      []ServiceConfig `yaml:"services"`
+	Watch         WatchConfig     `yaml:"watch"`
 }
 
 func Parse(path string) (*Config, error) {
