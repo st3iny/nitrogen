@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/st3iny/nitrogen/internal/builder"
@@ -81,11 +82,29 @@ func runWatcher(cfg *config.WatchConfig, watcherChannel chan<- fsnotify.Event) e
 
 	includes := append(cfg.Include, ".")
 	for _, include := range includes {
-		err = watch.AddDirRecursive(include)
+		dir, err := isDir(include)
 		if err != nil {
-			return fmt.Errorf("failed to watch dir: %w", err)
+			continue
+		}
+
+		if dir {
+			err = watch.AddDirRecursive(include)
+		} else {
+			err = watch.Add(include)
+		}
+		if err != nil {
+			return fmt.Errorf("failed to watch: %w", err)
 		}
 	}
 
 	return watch.Watch(context.Background(), watcherChannel)
+}
+
+func isDir(path string) (bool, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false, err
+	}
+
+	return info.IsDir(), nil
 }
