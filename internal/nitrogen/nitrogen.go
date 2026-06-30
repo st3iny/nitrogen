@@ -2,10 +2,10 @@ package nitrogen
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
-	"os"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/st3iny/nitrogen/internal/builder"
@@ -13,7 +13,6 @@ import (
 	"github.com/st3iny/nitrogen/internal/debounce"
 	"github.com/st3iny/nitrogen/internal/event"
 	"github.com/st3iny/nitrogen/internal/runner"
-	"github.com/st3iny/nitrogen/internal/watcher"
 )
 
 var (
@@ -30,7 +29,7 @@ func Run() error {
 
 	cfg, err := config.Parse(*configFlag)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	slog.SetLogLoggerLevel(cfg.LogLevel)
@@ -49,62 +48,16 @@ func Run() error {
 	go builder.NewWorker(cfg.Build).Run(rebuildChan, restartChan)
 	go runner.NewWorker(cfg.Services).Run(restartChan)
 
-	// Kick off initial build and start services
+	watch, err := setupWatcher(&cfg.Watch, watcherChannel)
+	if err != nil {
+		return fmt.Errorf("failed to setup watcher: %w", err)
+	}
+
+	// Kick off initial build to start services
 	rebuildChan <- event.InitialBuildEvent
 
-	return runWatcher(&cfg.Watch, watcherChannel)
-}
-
-func setupFlags() {
-	configFlag = flag.String("config", ".nitrogen.yaml", "path to a config file")
-}
-
-func runWatcher(cfg *config.WatchConfig, watcherChannel chan<- fsnotify.Event) error {
-	watch, err := watcher.New()
-	if err != nil {
-		return err
-	}
-	defer watch.Close()
-
-	watch.SetEventFilter(
-		fsnotify.Write,
-		fsnotify.Remove,
-		fsnotify.Create,
-		fsnotify.Rename,
+	return errors.Join(
+		watch.Watch(context.Background(), watcherChannel),
+		watch.Close(),
 	)
-
-	for _, exclude := range cfg.Exclude {
-		err = watch.AddExcludeGlob(exclude)
-		if err != nil {
-			return fmt.Errorf("failed to add exclude glob: %w", err)
-		}
-	}
-
-	includes := append(cfg.Include, ".")
-	for _, include := range includes {
-		dir, err := isDir(include)
-		if err != nil {
-			continue
-		}
-
-		if dir {
-			err = watch.AddDirRecursive(include)
-		} else {
-			err = watch.Add(include)
-		}
-		if err != nil {
-			return fmt.Errorf("failed to watch: %w", err)
-		}
-	}
-
-	return watch.Watch(context.Background(), watcherChannel)
-}
-
-func isDir(path string) (bool, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return false, err
-	}
-
-	return info.IsDir(), nil
 }
