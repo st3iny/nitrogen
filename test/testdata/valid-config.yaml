@@ -1,0 +1,12 @@
+logLevel: debug
+debounceDelay: 500ms
+goModFile: custom-go.mod
+build:
+  - ["make", "-f", "./test/Makefile", "build"]
+services:
+  - command: ["./bin/svc1"]
+  - command: ["./bin/svc2"]
+watch:
+  exclude:
+    - .git*
+    - .idea

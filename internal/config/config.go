@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"time"
@@ -8,12 +9,18 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
+var defaultConfig = Config{
+	DebounceDelay: 500 * time.Millisecond,
+	GoModFile:     "go.mod",
+}
+
 type Config struct {
 	LogLevel      slog.Level      `yaml:"logLevel"`
 	DebounceDelay time.Duration   `yaml:"debounceDelay"`
 	Build         [][]string      `yaml:"build"`
 	Services      []ServiceConfig `yaml:"services"`
 	Watch         WatchConfig     `yaml:"watch"`
+	GoModFile     string          `yaml:"goModFile"`
 }
 
 func Parse(path string) (*Config, error) {
@@ -21,12 +28,16 @@ func Parse(path string) (*Config, error) {
 
 	configYaml, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	var cfg Config
+	cfg := defaultConfig
 	err = yaml.Unmarshal(configYaml, &cfg)
-	return &cfg, err
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse config file: %w", err)
+	}
+
+	return &cfg, nil
 }
 
 type ServiceConfig struct {

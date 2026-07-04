@@ -12,16 +12,28 @@ type Event = string
 const InitialBuildEvent Event = "<initial build>"
 
 func MapFSNotifyEvents(in <-chan fsnotify.Event, out chan<- Event) {
+	defer close(out)
+
 	for {
-		e := <-in
+		e, ok := <-in
+		if !ok {
+			return
+		}
+
 		out <- e.Name
 	}
 }
 
-func TapLogChanges(in <-chan Event, out chan<- Event) {
+func TapLogChanges(logger *slog.Logger, in <-chan Event, out chan<- Event) {
+	defer close(out)
+
 	for {
-		e := <-in
-		slog.Info(fmt.Sprintf("%v changed", e))
+		e, ok := <-in
+		if !ok {
+			return
+		}
+
+		logger.Info(fmt.Sprintf("%v changed", e))
 		out <- e
 	}
 }

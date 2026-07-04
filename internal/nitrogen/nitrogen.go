@@ -6,8 +6,10 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/goccy/go-yaml"
 	"github.com/st3iny/nitrogen/internal/builder"
 	"github.com/st3iny/nitrogen/internal/config"
 	"github.com/st3iny/nitrogen/internal/debounce"
@@ -16,14 +18,11 @@ import (
 )
 
 var (
-	version = "git"
-
-	configFlag *string
+	printConfigFlag *bool
+	configFlag      *string
 )
 
 func Run() error {
-	slog.Info("starting nitrogen", "version", version)
-
 	setupFlags()
 	flag.Parse()
 
@@ -34,6 +33,24 @@ func Run() error {
 
 	slog.SetLogLoggerLevel(cfg.LogLevel)
 
+	if *printConfigFlag {
+		return runPrintConfigCommand(cfg)
+	}
+
+	return runDefaultCommand(cfg)
+}
+
+func runPrintConfigCommand(cfg *config.Config) error {
+	yamlEncoder := yaml.NewEncoder(os.Stdout)
+	return errors.Join(
+		yamlEncoder.Encode(cfg),
+		yamlEncoder.Close(),
+	)
+}
+
+func runDefaultCommand(cfg *config.Config) error {
+	ctx := context.Background()
+
 	watcherChannel := make(chan fsnotify.Event, 1)
 	reloadChannel := make(chan event.Event, 1)
 	debouncedReloadChannel := make(chan event.Event, 1)
@@ -43,12 +60,12 @@ func Run() error {
 	go event.MapFSNotifyEvents(watcherChannel, reloadChannel)
 	go debounce.Debounce(reloadChannel, debouncedReloadChannel, cfg.DebounceDelay)
 
-	go event.TapLogChanges(debouncedReloadChannel, rebuildChan)
+	go event.TapLogChanges(slog.Default(), debouncedReloadChannel, rebuildChan)
 
-	go builder.NewWorker(cfg.Build).Run(rebuildChan, restartChan)
-	go runner.NewWorker(cfg.Services).Run(restartChan)
+	go builder.NewWorker(cfg.Build).Run(ctx, rebuildChan, restartChan)
+	go runner.NewWorker(cfg.Services).Run(ctx, restartChan)
 
-	watch, err := setupWatcher(&cfg.Watch, watcherChannel)
+	watch, err := setupWatcher(cfg, watcherChannel)
 	if err != nil {
 		return fmt.Errorf("failed to setup watcher: %w", err)
 	}

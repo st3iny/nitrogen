@@ -6,14 +6,16 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/st3iny/nitrogen/internal/config"
+	"github.com/st3iny/nitrogen/internal/replace"
 	"github.com/st3iny/nitrogen/internal/watcher"
 )
 
 func setupFlags() {
 	configFlag = flag.String("config", ".nitrogen.yaml", "path to a config file")
+	printConfigFlag = flag.Bool("print-config", false, "print configuration and exit")
 }
 
-func setupWatcher(cfg *config.WatchConfig, watcherChannel chan<- fsnotify.Event) (*watcher.Watcher, error) {
+func setupWatcher(cfg *config.Config, watcherChannel chan<- fsnotify.Event) (*watcher.Watcher, error) {
 	watch, err := watcher.New()
 	if err != nil {
 		return nil, err
@@ -26,14 +28,24 @@ func setupWatcher(cfg *config.WatchConfig, watcherChannel chan<- fsnotify.Event)
 		fsnotify.Rename,
 	)
 
-	for _, exclude := range cfg.Exclude {
+	for _, exclude := range cfg.Watch.Exclude {
 		err = watch.AddExcludeGlob(exclude)
 		if err != nil {
 			return nil, fmt.Errorf("failed to add exclude glob: %w", err)
 		}
 	}
 
-	includes := append(cfg.Include, ".")
+	replaces, err := replace.Parse(cfg.GoModFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse replace directives: %w", err)
+	}
+
+	includes := []string{"."}
+	includes = append(includes, cfg.Watch.Include...)
+	for _, repl := range replaces {
+		includes = append(includes, repl.LocalPath)
+	}
+
 	for _, include := range includes {
 		dir, err := isDir(include)
 		if err != nil {

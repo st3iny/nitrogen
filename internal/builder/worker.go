@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
@@ -17,9 +18,16 @@ func NewWorker(steps [][]string) *Worker {
 	}
 }
 
-func (w *Worker) Run(rebuildChan <-chan event.Event, restartChan chan<- event.Event) {
+func (w *Worker) Run(ctx context.Context, rebuildChan <-chan event.Event, restartChan chan<- event.Event) {
+	defer close(restartChan)
+
 	for {
-		e := <-rebuildChan
+		var e event.Event
+		select {
+		case <-ctx.Done():
+			return
+		case e = <-rebuildChan:
+		}
 
 		err := Build(w.steps)
 		if err != nil {

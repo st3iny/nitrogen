@@ -13,28 +13,25 @@ import (
 )
 
 type Runner struct {
-	Services []config.ServiceConfig
+	Services     []config.ServiceConfig
+	RestartDelay time.Duration
 }
 
-func (r *Runner) RunServices(ctx context.Context) error {
+func (r *Runner) RunServices(ctx context.Context) {
 	slog.Info(fmt.Sprintf("starting %d services", len(r.Services)))
 
 	var wg sync.WaitGroup
 	for _, svc := range r.Services {
 		wg.Go(func() {
-			err := r.runService(ctx, &svc)
-			if err != nil {
-				slog.Error(fmt.Sprintf("failed to run services: %v", err))
-			}
+			r.runService(ctx, &svc)
 		})
 	}
 
 	<-ctx.Done()
 	wg.Wait()
-	return nil
 }
 
-func (r *Runner) runService(ctx context.Context, svc *config.ServiceConfig) error {
+func (r *Runner) runService(ctx context.Context, svc *config.ServiceConfig) {
 	for ctx.Err() == nil {
 		cmd := exec.CommandContext(ctx, svc.Command[0], svc.Command[1:]...)
 		cmd.Stdout = os.Stdout
@@ -44,8 +41,6 @@ func (r *Runner) runService(ctx context.Context, svc *config.ServiceConfig) erro
 			slog.Error(fmt.Sprintf("failed to run service: %v", err))
 		}
 
-		time.Sleep(1 * time.Second)
+		time.Sleep(r.RestartDelay)
 	}
-
-	return nil
 }

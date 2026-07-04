@@ -2,7 +2,7 @@ package runner
 
 import (
 	"context"
-	"log/slog"
+	"time"
 
 	"github.com/st3iny/nitrogen/internal/config"
 	"github.com/st3iny/nitrogen/internal/event"
@@ -15,25 +15,27 @@ type Worker struct {
 func NewWorker(services []config.ServiceConfig) *Worker {
 	return &Worker{
 		runner: Runner{
-			Services: services,
+			Services:     services,
+			RestartDelay: 1 * time.Second,
 		},
 	}
 }
 
-func (r *Worker) Run(restartChan <-chan event.Event) {
+func (r *Worker) Run(ctx context.Context, restartChan <-chan event.Event) {
 	// Delay initial start until receiving a restart event from the builder
-	<-restartChan
+	select {
+	case <-ctx.Done():
+		return
+	case <-restartChan:
+	}
 
-	for {
-		ctx, cancel := context.WithCancel(context.Background())
+	for ctx.Err() == nil {
+		servicesCtx, cancel := context.WithCancel(ctx)
 		go func() {
 			<-restartChan
 			cancel()
 		}()
 
-		err := r.runner.RunServices(ctx)
-		if err != nil {
-			slog.Error(err.Error(), "component", "service-runner")
-		}
+		r.runner.RunServices(servicesCtx)
 	}
 }
