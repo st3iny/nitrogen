@@ -17,11 +17,13 @@ jobs:
       with:
         go-version-file: go.mod
 
-    - name: Setup
-      run: make setup
-
     - name: Build
       run: make build
 
-    - name: Report coverage
-      run: make coverage
+    - name: Test
+      run: make test
+
+    - name: Check test coverage
+      uses: vladopajic/go-test-coverage@v2
+      with:
+        config: ./.testcoverage.yml
