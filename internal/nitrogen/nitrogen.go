@@ -6,10 +6,8 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
-	"os"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/goccy/go-yaml"
 	"github.com/st3iny/nitrogen/internal/builder"
 	"github.com/st3iny/nitrogen/internal/config"
 	"github.com/st3iny/nitrogen/internal/debounce"
@@ -17,10 +15,7 @@ import (
 	"github.com/st3iny/nitrogen/internal/runner"
 )
 
-var (
-	printConfigFlag *bool
-	configFlag      *string
-)
+var configFlag *string
 
 func Run() error {
 	setupFlags()
@@ -32,23 +27,10 @@ func Run() error {
 	}
 
 	slog.SetLogLoggerLevel(cfg.LogLevel)
-
-	if *printConfigFlag {
-		return runPrintConfigCommand(cfg)
-	}
-
-	return runDefaultCommand(cfg)
+	return runWatcher(cfg)
 }
 
-func runPrintConfigCommand(cfg *config.Config) error {
-	yamlEncoder := yaml.NewEncoder(os.Stdout)
-	return errors.Join(
-		yamlEncoder.Encode(cfg),
-		yamlEncoder.Close(),
-	)
-}
-
-func runDefaultCommand(cfg *config.Config) error {
+func runWatcher(cfg *config.Config) error {
 	ctx := context.Background()
 
 	watcherChannel := make(chan fsnotify.Event, 1)

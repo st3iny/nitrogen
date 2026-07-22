@@ -44,14 +44,12 @@ then run the `nitrogen` binary.
 
 ### Flags
 
-| Flag            | Default          | Description                                        |
-| --------------- | ---------------- | -------------------------------------------------- |
-| `-config`       | `.nitrogen.yaml` | Path to the config file.                           |
-| `-print-config` | `false`          | Print the loaded configuration (as YAML) and exit. |
+| Flag      | Default          | Description              |
+| --------- | ---------------- | ------------------------ |
+| `-config` | `.nitrogen.yaml` | Path to the config file. |
 
 ```bash
 ./bin/nitrogen --config path/to/config.yaml
-./bin/nitrogen --print-config
 ```
 
 ## Configuration

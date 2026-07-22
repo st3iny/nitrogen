@@ -12,7 +12,6 @@ import (
 
 func setupFlags() {
 	configFlag = flag.String("config", ".nitrogen.yaml", "path to a config file")
-	printConfigFlag = flag.Bool("print-config", false, "print configuration and exit")
 }
 
 func setupWatcher(cfg *config.Config) (*watcher.Watcher, error) {
