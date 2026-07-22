@@ -1,0 +1,12 @@
+profile: coverage.out
+
+threshold:
+  file: 100
+  package: 100
+  total: 100
+
+exclude:
+  paths:
+    - ^internal/nitrogen # main entry point of the CLI application
+
+force-annotation-comment: true

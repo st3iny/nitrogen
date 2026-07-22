@@ -65,7 +65,7 @@ func runDefaultCommand(cfg *config.Config) error {
 	go builder.NewWorker(cfg.Build).Run(ctx, rebuildChan, restartChan)
 	go runner.NewWorker(cfg.Services).Run(ctx, restartChan)
 
-	watch, err := setupWatcher(cfg, watcherChannel)
+	watch, err := setupWatcher(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to setup watcher: %w", err)
 	}

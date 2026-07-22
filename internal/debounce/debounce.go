@@ -11,8 +11,13 @@ func Debounce[T any](in <-chan T, out chan<- T, delay time.Duration) {
 	)
 
 	for {
+		var ok bool
 		select {
-		case event = <-in:
+		case event, ok = <-in:
+			if !ok {
+				return
+			}
+
 			timer = time.After(delay)
 		case <-timer:
 			out <- event

@@ -18,17 +18,23 @@ type Watcher struct {
 	inner       *fsnotify.Watcher
 	eventFilter []fsnotify.Op
 	excludes    []glob.Glob
+	logger      *slog.Logger
 }
 
 func New() (*Watcher, error) {
 	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
+	if err != nil { // coverage-ignore // Not possible to mock fsnotify failure
 		return nil, err
 	}
 
 	return &Watcher{
-		inner: watcher,
+		inner:  watcher,
+		logger: slog.Default(),
 	}, nil
+}
+
+func (w *Watcher) SetLogger(logger *slog.Logger) {
+	w.logger = logger
 }
 
 func (w *Watcher) Close() error {
@@ -36,13 +42,18 @@ func (w *Watcher) Close() error {
 }
 
 func (w *Watcher) Add(path string) error {
-	slog.Info(fmt.Sprintf("watching %s", path))
+	w.logger.Info(fmt.Sprintf("watching %s", path))
 	return w.inner.Add(path)
 }
 
 func (w *Watcher) AddDirRecursive(dir string) error {
+	err := w.Add(dir)
+	if err != nil { // coverage-ignore // Impractical to mock specific error cases
+		return err
+	}
+
 	entries, err := os.ReadDir(dir)
-	if err != nil {
+	if err != nil { // coverage-ignore // Impractical to mock specific error cases
 		return err
 	}
 
@@ -50,18 +61,18 @@ func (w *Watcher) AddDirRecursive(dir string) error {
 		fullPath := path.Join(dir, entry.Name())
 
 		if w.isExcluded(entry.Name()) {
-			slog.Info(fmt.Sprintf("ignoring %s", fullPath))
+			w.logger.Info(fmt.Sprintf("ignoring %s", fullPath))
 			continue
 		}
 
 		err = w.Add(fullPath)
-		if err != nil {
+		if err != nil { // coverage-ignore // Impractical to mock specific error cases
 			return err
 		}
 
 		if entry.IsDir() {
 			err = w.AddDirRecursive(fullPath)
-			if err != nil {
+			if err != nil { // coverage-ignore // Impractical to mock specific error cases
 				return err
 			}
 		}
@@ -85,6 +96,8 @@ func (w *Watcher) SetEventFilter(ops ...fsnotify.Op) {
 }
 
 func (w *Watcher) Watch(ctx context.Context, events chan<- fsnotify.Event) error {
+	defer close(events)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -95,15 +108,17 @@ func (w *Watcher) Watch(ctx context.Context, events chan<- fsnotify.Event) error
 			}
 
 			slog.Debug(event.String())
-			if hasOp(event, w.eventFilter) {
-				events <- event
+			if len(w.eventFilter) > 0 && !hasOp(event, w.eventFilter) {
+				continue
 			}
+
+			events <- event
 		case err, ok := <-w.inner.Errors:
 			if !ok {
 				return ErrClosed
 			}
 
-			slog.Error(err.Error())
+			w.logger.Error(err.Error())
 		}
 	}
 }
